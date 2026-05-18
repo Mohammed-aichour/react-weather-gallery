@@ -24,7 +24,8 @@ export default function GalleryPage({
     <div className="page">
       {!activeCity && !loading && (
         <p className="empty-hint">
-          Recherchez une ville ci-dessus pour afficher des images liées à cette ville.
+          Choisissez une ville ou un thème marocain sur l&apos;accueil, ou lancez une recherche
+          ci-dessus pour découvrir le patrimoine visuel du Maroc (Pixabay).
         </p>
       )}
       {loading && images.length === 0 && activeCity && (

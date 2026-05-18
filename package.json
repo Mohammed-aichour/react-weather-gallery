@@ -1,9 +1,9 @@
 {
-  "name": "myapp",
+  "name": "maroc-culture",
   "version": "0.1.0",
   "private": true,
 
-  "homepage": "https://mohammed-aichour.github.io/react-weather-gallery",
+  "homepage": "https://mohammed-aichour.github.io/maroc-culture",
 
   "dependencies": {
     "@testing-library/dom": "^10.4.1",

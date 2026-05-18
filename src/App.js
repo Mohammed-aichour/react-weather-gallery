@@ -1,10 +1,12 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import './App.css';
 import Navbar from './components/Navbar';
+import HomePage from './components/Home/HomePage';
 import GalleryPage from './components/Gallery/GalleryPage';
 import WeatherPage from './components/Weather/WeatherPage';
+import CulturePage from './components/Culture/CulturePage';
 import { SearchBar } from './components/Common';
-import { getForecastByCity, searchPhotos } from './api';
+import { getForecastByCity, searchPhotos, getMoroccoInfo } from './api';
 import { isOpenWeatherConfigured, isPixabayConfigured } from './config';
 
 function reasonMessage(reason) {
@@ -13,7 +15,7 @@ function reasonMessage(reason) {
 }
 
 function App() {
-  const [page, setPage] = useState('gallery');
+  const [page, setPage] = useState('home');
   const [cityInput, setCityInput] = useState('');
   const [activeCity, setActiveCity] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
@@ -23,25 +25,49 @@ function App() {
   const [galleryPage, setGalleryPage] = useState(1);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [moroccoCountry, setMoroccoCountry] = useState(null);
+  const [countryLoading, setCountryLoading] = useState(false);
+  const [countryError, setCountryError] = useState(null);
 
   const configHint = useMemo(() => {
     const miss = [];
     if (!isOpenWeatherConfigured()) miss.push('REACT_APP_OPENWEATHER_ID (OpenWeather)');
     if (!isPixabayConfigured()) miss.push('REACT_APP_PIXABAY_KEY (Pixabay)');
     if (miss.length === 0) return null;
-    return `Clés API manquantes : ${miss.join(' et ')}. Créez le fichier myapp/.env.local avec ces variables, puis redémarrez npm start.`;
+    return `Clés API manquantes : ${miss.join(' et ')}. Créez le fichier .env.local avec ces variables, puis redémarrez npm start. Wikipédia et REST Countries fonctionnent sans clé.`;
   }, []);
 
-  const runCitySearch = useCallback(async (q, imagePage = 1) => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCountryLoading(true);
+      try {
+        const data = await getMoroccoInfo();
+        if (!cancelled) setMoroccoCountry(data);
+      } catch (e) {
+        if (!cancelled) {
+          setCountryError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setCountryLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const runCitySearch = useCallback(async (q, imagePage = 1, targetPage = null) => {
     const trimmed = q.trim();
     if (!trimmed) return;
 
     setSearchLoading(true);
     setNotice(null);
+    setCityInput(trimmed);
+
+    if (targetPage) setPage(targetPage);
 
     try {
       const [wResult, pResult] = await Promise.allSettled([
-        getForecastByCity(trimmed),
+        getForecastByCity(`${trimmed},MA`),
         searchPhotos(trimmed, imagePage),
       ]);
 
@@ -91,7 +117,7 @@ function App() {
     }
   }, []);
 
-  const handleSearchSubmit = () => runCitySearch(cityInput, 1);
+  const handleSearchSubmit = () => runCitySearch(cityInput, 1, 'gallery');
 
   const handleGalleryPage = useCallback(
     async (p) => {
@@ -115,34 +141,58 @@ function App() {
     [activeCity]
   );
 
+  const exploreCity = useCallback(
+    (city) => runCitySearch(city, 1, 'weather'),
+    [runCitySearch]
+  );
+
+  const exploreTheme = useCallback(
+    (theme) => runCitySearch(theme, 1, 'gallery'),
+    [runCitySearch]
+  );
+
   const barLoading = searchLoading || galleryLoading;
+  const showGlobalSearch = page === 'gallery' || page === 'weather';
 
   return (
     <div className="App">
       <Navbar page={page} setPage={setPage} />
       {configHint && (
-        <div className="api-banner api-banner--warn" role="status">
+        <div className="api-banner api-banner--warn layout-banner" role="status">
           {configHint}
         </div>
       )}
-      <div className="global-search-wrap">
-        <SearchBar
-          value={cityInput}
-          onChange={setCityInput}
-          onSearch={handleSearchSubmit}
-          loading={barLoading}
-          placeholder="Entrez une ville (météo + galerie)..."
+      {showGlobalSearch && (
+        <div className="global-search-wrap">
+          <SearchBar
+            value={cityInput}
+            onChange={setCityInput}
+            onSearch={handleSearchSubmit}
+            loading={barLoading}
+            placeholder="Ville marocaine ou thème (ex. Marrakech, médina)…"
+          />
+          {notice && (
+            <div
+              className={`api-banner api-banner--${notice.kind === 'err' ? 'err' : 'warn'}`}
+              role="alert"
+            >
+              {notice.text}
+            </div>
+          )}
+        </div>
+      )}
+      {page === 'home' && (
+        <HomePage
+          country={moroccoCountry}
+          countryLoading={countryLoading}
+          countryError={countryError}
+          onExploreCity={exploreCity}
+          onExploreTheme={exploreTheme}
+          onGoGallery={() => setPage('gallery')}
+          onGoCulture={() => setPage('culture')}
         />
-        {notice && (
-          <div
-            className={`api-banner api-banner--${notice.kind === 'err' ? 'err' : 'warn'}`}
-            role="alert"
-          >
-            {notice.text}
-          </div>
-        )}
-      </div>
-      {page === 'gallery' ? (
+      )}
+      {page === 'gallery' && (
         <GalleryPage
           images={galleryHits}
           total={galleryTotal}
@@ -151,13 +201,15 @@ function App() {
           onPage={handleGalleryPage}
           loading={searchLoading || galleryLoading}
         />
-      ) : (
+      )}
+      {page === 'weather' && (
         <WeatherPage
           data={weatherData}
           activeCity={activeCity}
           loading={searchLoading}
         />
       )}
+      {page === 'culture' && <CulturePage />}
     </div>
   );
 }

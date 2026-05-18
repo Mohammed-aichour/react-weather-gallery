@@ -6,7 +6,10 @@ export default function WeatherPage({ data, activeCity, loading }) {
   if (!activeCity && !loading) {
     return (
       <div className="page">
-        <p className="empty-hint">Recherchez une ville ci-dessus pour afficher la météo.</p>
+        <p className="empty-hint">
+          Sélectionnez une ville marocaine sur l&apos;accueil ou recherchez ci-dessus pour la météo
+          (OpenWeather).
+        </p>
       </div>
     );
   }

@@ -2,6 +2,17 @@ import axios from 'axios';
 import { PIXABAY_KEY, PER_PAGE, isPixabayConfigured } from '../config';
 import { axiosErrorMessage } from './httpError';
 
+/** Enrichit la requête pour cibler le patrimoine et les paysages marocains. */
+export function moroccoPhotoQuery(query) {
+  const q = query.trim();
+  if (!q) return 'Maroc culture';
+  const lower = q.toLowerCase();
+  if (lower.includes('maroc') || lower.includes('morocco') || lower.includes('maghreb')) {
+    return q;
+  }
+  return `${q} Maroc`;
+}
+
 export async function searchPhotos(query, page = 1) {
   if (!isPixabayConfigured()) {
     throw new Error(
@@ -12,7 +23,7 @@ export async function searchPhotos(query, page = 1) {
     const { data } = await axios.get('https://pixabay.com/api/', {
       params: {
         key: PIXABAY_KEY,
-        q: query.trim(),
+        q: moroccoPhotoQuery(query),
         per_page: PER_PAGE,
         page,
         image_type: 'photo',
