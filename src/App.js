@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import './App.css';
 import Navbar from './components/Navbar';
 import HomePage from './components/Home/HomePage';
@@ -7,7 +7,7 @@ import WeatherPage from './components/Weather/WeatherPage';
 import CulturePage from './components/Culture/CulturePage';
 import { SearchBar } from './components/Common';
 import { getForecastByCity, searchPhotos, getMoroccoInfo } from './api';
-import { isOpenWeatherConfigured, isPixabayConfigured } from './config';
+import { isPixabayConfigured } from './config';
 
 function reasonMessage(reason) {
   if (reason instanceof Error) return reason.message;
@@ -28,13 +28,13 @@ function App() {
   const [moroccoCountry, setMoroccoCountry] = useState(null);
   const [countryLoading, setCountryLoading] = useState(false);
   const [countryError, setCountryError] = useState(null);
+  const weatherBootstrapped = useRef(false);
 
   const configHint = useMemo(() => {
     const miss = [];
-    if (!isOpenWeatherConfigured()) miss.push('REACT_APP_OPENWEATHER_ID (OpenWeather)');
     if (!isPixabayConfigured()) miss.push('REACT_APP_PIXABAY_KEY (Pixabay)');
     if (miss.length === 0) return null;
-    return `Clés API manquantes : ${miss.join(' et ')}. Créez le fichier .env.local avec ces variables, puis redémarrez npm start. Wikipédia et REST Countries fonctionnent sans clé.`;
+    return `Clé Pixabay manquante pour plus de photos : ajoutez REACT_APP_PIXABAY_KEY dans .env.local. La météo fonctionne sans clé (Open-Meteo).`;
   }, []);
 
   useEffect(() => {
@@ -55,103 +55,158 @@ function App() {
     return () => { cancelled = true; };
   }, []);
 
-  const runCitySearch = useCallback(async (q, imagePage = 1, targetPage = null) => {
+  const runWeatherSearch = useCallback(async (q) => {
     const trimmed = q.trim();
     if (!trimmed) return;
 
     setSearchLoading(true);
     setNotice(null);
     setCityInput(trimmed);
-
-    if (targetPage) setPage(targetPage);
+    setActiveCity(trimmed);
 
     try {
-      const [wResult, pResult] = await Promise.allSettled([
-        getForecastByCity(`${trimmed},MA`),
-        searchPhotos(trimmed, imagePage),
-      ]);
-
-      const weatherOk = wResult.status === 'fulfilled';
-      const galleryOk = pResult.status === 'fulfilled';
-
-      if (weatherOk) {
-        setWeatherData(wResult.value);
-      } else {
-        setWeatherData(null);
-      }
-
-      if (galleryOk) {
-        const pixa = pResult.value;
-        setGalleryHits(pixa.hits || []);
-        setGalleryTotal(pixa.totalHits ?? 0);
-        setGalleryPage(imagePage);
-      } else {
-        setGalleryHits([]);
-        setGalleryTotal(0);
-      }
-
-      if (weatherOk || galleryOk) {
-        setActiveCity(trimmed);
-      } else {
-        setActiveCity('');
-      }
-
-      if (!weatherOk && !galleryOk) {
-        setNotice({
-          kind: 'err',
-          text: `Météo : ${reasonMessage(wResult.reason)} — Galerie : ${reasonMessage(pResult.reason)}`,
-        });
-      } else if (!weatherOk) {
-        setNotice({
-          kind: 'warn',
-          text: `Météo : ${reasonMessage(wResult.reason)}`,
-        });
-      } else if (!galleryOk) {
-        setNotice({
-          kind: 'warn',
-          text: `Galerie : ${reasonMessage(pResult.reason)}`,
-        });
-      }
+      const data = await getForecastByCity(trimmed);
+      setWeatherData(data);
+    } catch (e) {
+      setWeatherData(null);
+      setNotice({ kind: 'err', text: reasonMessage(e) });
     } finally {
       setSearchLoading(false);
     }
   }, []);
 
-  const handleSearchSubmit = () => runCitySearch(cityInput, 1, 'gallery');
+  const runGallerySearch = useCallback(async (q, imagePage = 1) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
+
+    setGalleryLoading(true);
+    setNotice(null);
+    setCityInput(trimmed);
+    setActiveCity(trimmed);
+
+    try {
+      const pixa = await searchPhotos(trimmed, imagePage);
+      setGalleryHits(pixa.hits || []);
+      setGalleryTotal(pixa.totalHits ?? 0);
+      setGalleryPage(imagePage);
+    } catch (e) {
+      setGalleryHits([]);
+      setGalleryTotal(0);
+      setNotice({ kind: 'err', text: reasonMessage(e) });
+    } finally {
+      setGalleryLoading(false);
+    }
+  }, []);
+
+  const runCitySearch = useCallback(
+    async (q, imagePage = 1, targetPage = null) => {
+      const trimmed = q.trim();
+      if (!trimmed) return;
+
+      if (targetPage) setPage(targetPage);
+
+      if (targetPage === 'weather') {
+        await runWeatherSearch(trimmed);
+        return;
+      }
+
+      if (targetPage === 'gallery') {
+        await runGallerySearch(trimmed, imagePage);
+        return;
+      }
+
+      setSearchLoading(true);
+      setGalleryLoading(true);
+      setNotice(null);
+      setCityInput(trimmed);
+
+      try {
+        const [wResult, pResult] = await Promise.allSettled([
+          getForecastByCity(trimmed),
+          searchPhotos(trimmed, imagePage),
+        ]);
+
+        const weatherOk = wResult.status === 'fulfilled';
+        const galleryOk = pResult.status === 'fulfilled';
+
+        if (weatherOk) setWeatherData(wResult.value);
+        else setWeatherData(null);
+
+        if (galleryOk) {
+          const pixa = pResult.value;
+          setGalleryHits(pixa.hits || []);
+          setGalleryTotal(pixa.totalHits ?? 0);
+          setGalleryPage(imagePage);
+        } else {
+          setGalleryHits([]);
+          setGalleryTotal(0);
+        }
+
+        if (weatherOk || galleryOk) setActiveCity(trimmed);
+        else setActiveCity('');
+
+        if (!weatherOk && !galleryOk) {
+          setNotice({
+            kind: 'err',
+            text: `Météo : ${reasonMessage(wResult.reason)} — Galerie : ${reasonMessage(pResult.reason)}`,
+          });
+        } else if (!weatherOk) {
+          setNotice({ kind: 'warn', text: `Météo : ${reasonMessage(wResult.reason)}` });
+        } else if (!galleryOk) {
+          setNotice({ kind: 'warn', text: `Galerie : ${reasonMessage(pResult.reason)}` });
+        }
+      } finally {
+        setSearchLoading(false);
+        setGalleryLoading(false);
+      }
+    },
+    [runWeatherSearch, runGallerySearch]
+  );
+
+  useEffect(() => {
+    if (page !== 'weather' || weatherBootstrapped.current) return;
+    weatherBootstrapped.current = true;
+    if (!weatherData && !activeCity) {
+      runWeatherSearch('Marrakech');
+    }
+  }, [page, weatherData, activeCity, runWeatherSearch]);
+
+  const handleSearchSubmit = useCallback(() => {
+    if (page === 'weather') {
+      runWeatherSearch(cityInput);
+    } else if (page === 'gallery') {
+      runGallerySearch(cityInput, 1);
+    } else {
+      runCitySearch(cityInput, 1, 'gallery');
+    }
+  }, [page, cityInput, runWeatherSearch, runGallerySearch, runCitySearch]);
 
   const handleGalleryPage = useCallback(
     async (p) => {
       if (!activeCity.trim()) return;
-      setGalleryLoading(true);
-      setNotice(null);
-      try {
-        const pixa = await searchPhotos(activeCity, p);
-        setGalleryHits(pixa.hits || []);
-        setGalleryTotal(pixa.totalHits ?? 0);
-        setGalleryPage(p);
-      } catch (e) {
-        setNotice({
-          kind: 'err',
-          text: reasonMessage(e),
-        });
-      } finally {
-        setGalleryLoading(false);
-      }
+      await runGallerySearch(activeCity, p);
     },
-    [activeCity]
+    [activeCity, runGallerySearch]
   );
 
   const exploreCity = useCallback(
-    (city) => runCitySearch(city, 1, 'weather'),
-    [runCitySearch]
+    (city) => {
+      setPage('weather');
+      runWeatherSearch(city);
+    },
+    [runWeatherSearch]
   );
 
   const exploreTheme = useCallback(
-    (theme) => runCitySearch(theme, 1, 'gallery'),
-    [runCitySearch]
+    (theme) => {
+      setPage('gallery');
+      runGallerySearch(theme, 1);
+    },
+    [runGallerySearch]
   );
 
-  const barLoading = searchLoading || galleryLoading;
+  const barLoading =
+    page === 'weather' ? searchLoading : searchLoading || galleryLoading;
   const showGlobalSearch = page === 'gallery' || page === 'weather';
 
   return (
@@ -169,7 +224,11 @@ function App() {
             onChange={setCityInput}
             onSearch={handleSearchSubmit}
             loading={barLoading}
-            placeholder="Ville marocaine ou thème (ex. Marrakech, médina)…"
+            placeholder={
+              page === 'weather'
+                ? 'Ville marocaine (ex. Marrakech, Fès, Rabat)…'
+                : 'Thème ou ville (ex. médina, Sahara)…'
+            }
           />
           {notice && (
             <div
@@ -207,6 +266,7 @@ function App() {
           data={weatherData}
           activeCity={activeCity}
           loading={searchLoading}
+          onCitySelect={runWeatherSearch}
         />
       )}
       {page === 'culture' && <CulturePage />}

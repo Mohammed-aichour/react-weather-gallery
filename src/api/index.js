@@ -1,4 +1,10 @@
 export { getForecastByCity } from './weather';
-export { searchPhotos } from './images';
+export {
+  searchPhotos,
+  getHomePhotos,
+  photoDisplayUrl,
+  getCultureShowcasePhotos,
+  getPhotosForSubject,
+} from './images';
 export { getMoroccoInfo } from './country';
-export { searchWikipedia, getArticleSummary } from './wikipedia';
+export { searchWikipedia, getArticleSummary, getWikiPageImage } from './wikipedia';

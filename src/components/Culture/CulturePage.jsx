@@ -1,14 +1,61 @@
-import React, { useState, useCallback } from 'react';
-import { searchWikipedia, getArticleSummary } from '../../api';
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+  searchWikipedia,
+  getArticleSummary,
+  getWikiPageImage,
+  getCultureShowcasePhotos,
+  getPhotosForSubject,
+  photoDisplayUrl,
+} from '../../api';
 import { CULTURE_TOPICS } from '../../config';
 import { SearchBar } from '../Common';
+import CulturePhotoCard from './CulturePhotoCard';
+
+function CulturePhotoStrip({ photos, title }) {
+  if (!photos?.length) return null;
+
+  return (
+    <section className="culture-photo-strip" aria-label={title}>
+      <h2 className="section-title">{title}</h2>
+      <div className="culture-photo-strip__grid">
+        {photos.map((photo, i) => (
+          <figure key={photo.id ?? i} className="culture-photo-strip__item">
+            <img
+              src={photoDisplayUrl(photo)}
+              alt={photo.tags || 'Culture marocaine'}
+              loading="lazy"
+            />
+          </figure>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function CulturePage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [article, setArticle] = useState(null);
+  const [articlePhotos, setArticlePhotos] = useState([]);
+  const [heroImage, setHeroImage] = useState(null);
+  const [showcase, setShowcase] = useState([]);
+  const [showcaseLoading, setShowcaseLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setShowcaseLoading(true);
+      try {
+        const photos = await getCultureShowcasePhotos();
+        if (!cancelled) setShowcase(photos);
+      } finally {
+        if (!cancelled) setShowcaseLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const runSearch = useCallback(async (q) => {
     const trimmed = q.trim();
@@ -17,6 +64,8 @@ export default function CulturePage() {
     setLoading(true);
     setError(null);
     setArticle(null);
+    setArticlePhotos([]);
+    setHeroImage(null);
 
     try {
       const { titles, descriptions } = await searchWikipedia(trimmed);
@@ -39,9 +88,17 @@ export default function CulturePage() {
   const openArticle = useCallback(async (title) => {
     setLoading(true);
     setError(null);
+    setArticlePhotos([]);
+
     try {
-      const summary = await getArticleSummary(title);
+      const [summary, wikiImg, photoPack] = await Promise.all([
+        getArticleSummary(title),
+        getWikiPageImage(title),
+        getPhotosForSubject(title, 6),
+      ]);
       setArticle(summary);
+      setHeroImage(summary.thumbnail?.source || wikiImg || photoDisplayUrl(photoPack.hits[0]));
+      setArticlePhotos(photoPack.hits);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -49,31 +106,57 @@ export default function CulturePage() {
     }
   }, []);
 
+  const openTopic = useCallback(
+    (topic) => {
+      setQuery(topic);
+      runSearch(topic);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [runSearch]
+  );
+
   if (article) {
     return (
       <div className="page culture-page">
         <button
           type="button"
           className="nav-btn"
-          onClick={() => setArticle(null)}
+          onClick={() => {
+            setArticle(null);
+            setArticlePhotos([]);
+            setHeroImage(null);
+          }}
           style={{ marginBottom: '20px' }}
         >
           ← Retour aux résultats
         </button>
+
+        {heroImage && (
+          <div className="culture-article-hero">
+            <img src={heroImage} alt={article.title} />
+            <div className="culture-article-hero__overlay">
+              <h1>{article.title}</h1>
+              {article.description && <p>{article.description}</p>}
+            </div>
+          </div>
+        )}
+
         <article className="wiki-article">
-          {article.thumbnail?.source && (
+          {!heroImage && (
+            <>
+              <h1>{article.title}</h1>
+              {article.description && (
+                <p className="wiki-article__desc">{article.description}</p>
+              )}
+            </>
+          )}
+          {article.thumbnail?.source && heroImage !== article.thumbnail.source && (
             <img
               className="wiki-article__thumb"
               src={article.thumbnail.source}
               alt=""
-              width={article.thumbnail.width}
-              height={article.thumbnail.height}
               loading="lazy"
             />
-          )}
-          <h1>{article.title}</h1>
-          {article.description && (
-            <p className="wiki-article__desc">{article.description}</p>
           )}
           <div
             className="wiki-article__extract"
@@ -91,6 +174,8 @@ export default function CulturePage() {
             </a>
           )}
         </article>
+
+        <CulturePhotoStrip photos={articlePhotos} title="Galerie liée au sujet" />
       </div>
     );
   }
@@ -100,9 +185,26 @@ export default function CulturePage() {
       <header className="culture-header">
         <h1>Culture &amp; patrimoine</h1>
         <p className="section-desc">
-          Articles en français via l&apos;API Wikipédia — cuisine, artisanat, médinas, festivals…
+          Articles Wikipédia et photos du Maroc — cliquez sur une image ou un sujet pour en savoir plus.
         </p>
       </header>
+
+      <section className="culture-showcase" aria-label="Sujets culturels en images">
+        <h2 className="section-title">Explorer en images</h2>
+        {showcaseLoading && <p className="empty-hint">Chargement des photos culture…</p>}
+        {!showcaseLoading && (
+          <div className="culture-showcase__grid">
+            {showcase.map((photo) => (
+              <CulturePhotoCard
+                key={photo.topic || photo.id}
+                photo={photo}
+                label={photo.topic}
+                onClick={() => openTopic(photo.topic || photo.tags)}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <SearchBar
         value={query}
@@ -115,15 +217,12 @@ export default function CulturePage() {
       <section className="chip-section">
         <h2 className="section-title">Sujets suggérés</h2>
         <div className="chips">
-          {CULTURE_TOPICS.map(topic => (
+          {CULTURE_TOPICS.map((topic) => (
             <button
               key={topic}
               type="button"
               className="chip"
-              onClick={() => {
-                setQuery(topic);
-                runSearch(topic);
-              }}
+              onClick={() => openTopic(topic)}
             >
               {topic}
             </button>
@@ -142,7 +241,7 @@ export default function CulturePage() {
       )}
 
       <ul className="wiki-results">
-        {results.map(item => (
+        {results.map((item) => (
           <li key={item.title}>
             <button
               type="button"

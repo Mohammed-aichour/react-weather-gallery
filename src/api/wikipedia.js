@@ -42,3 +42,25 @@ export async function getArticleSummary(title) {
     throw new Error(axiosErrorMessage(e));
   }
 }
+
+/** Image principale d’un article Wikipédia (si disponible). */
+export async function getWikiPageImage(title) {
+  try {
+    const { data } = await axios.get(WIKI_API, {
+      params: {
+        action: 'query',
+        titles: title,
+        prop: 'pageimages',
+        format: 'json',
+        pithumbsize: 800,
+        origin: '*',
+      },
+      timeout: 20000,
+    });
+    const pages = data?.query?.pages ?? {};
+    const page = Object.values(pages)[0];
+    return page?.thumbnail?.source ?? null;
+  } catch {
+    return null;
+  }
+}

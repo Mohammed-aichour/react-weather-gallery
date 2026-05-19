@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getMoroccoInfo } from '../../api';
+import { getMoroccoInfo, getHomePhotos, photoDisplayUrl } from '../../api';
 import { MOROCCAN_CITIES, GALLERY_THEMES } from '../../config';
+import HomePhotoGrid from './HomePhotoGrid';
 
 function formatPopulation(n) {
   if (!n) return '—';
@@ -19,6 +20,9 @@ export default function HomePage({
   const [localCountry, setLocalCountry] = useState(country);
   const [loading, setLoading] = useState(countryLoading);
   const [error, setError] = useState(countryError);
+  const [homePhotos, setHomePhotos] = useState([]);
+  const [photosLoading, setPhotosLoading] = useState(true);
+  const [photosSource, setPhotosSource] = useState('fallback');
 
   useEffect(() => {
     setLocalCountry(country);
@@ -44,6 +48,33 @@ export default function HomePage({
     return () => { cancelled = true; };
   }, [localCountry, loading, error]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setPhotosLoading(true);
+      try {
+        const { hits, source } = await getHomePhotos();
+        if (!cancelled) {
+          setHomePhotos(hits);
+          setPhotosSource(source);
+        }
+      } finally {
+        if (!cancelled) setPhotosLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const heroPhotoUrl = photoDisplayUrl(homePhotos[0]);
+  const heroStyle = heroPhotoUrl
+    ? { '--hero-photo': `url("${heroPhotoUrl}")` }
+    : undefined;
+
+  const handlePhotoClick = (photo) => {
+    const theme = photo.tags?.split(',')[0]?.trim() || 'Maroc';
+    onExploreTheme(theme);
+  };
+
   const name = localCountry?.name?.common ?? 'Maroc';
   const flag = localCountry?.flag ?? '🇲🇦';
   const capital = localCountry?.capital?.[0] ?? 'Rabat';
@@ -62,7 +93,11 @@ export default function HomePage({
 
   return (
     <div className="page home-page">
-      <section className="hero-maroc" aria-labelledby="hero-title">
+      <section
+        className={`hero-maroc${heroPhotoUrl ? ' hero-maroc--photo' : ''}`}
+        style={heroStyle}
+        aria-labelledby="hero-title"
+      >
         <div className="hero-maroc__pattern" aria-hidden="true" />
         <div className="hero-maroc__content">
           <p className="hero-maroc__eyebrow">Royaume du Maroc · المملكة المغربية</p>
@@ -93,6 +128,14 @@ export default function HomePage({
           />
         )}
       </section>
+
+      <HomePhotoGrid
+        photos={homePhotos}
+        loading={photosLoading}
+        source={photosSource}
+        onPhotoClick={handlePhotoClick}
+        onGoGallery={onGoGallery}
+      />
 
       <section className="info-grid" aria-label="Informations sur le Maroc">
         <h2 className="section-title">Le pays en bref</h2>
