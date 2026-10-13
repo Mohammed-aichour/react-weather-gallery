@@ -1,71 +1,90 @@
-# Getting Started with Create React App
+# React Weather & City Gallery
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> **Application web réactive combinant prévisions météorologiques en temps réel, galerie photo dynamique et découverte culturelle.**
 
-## Available Scripts
+[![React 19](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Axios](https://img.shields.io/badge/Axios-HTTP_Client-5A29E4?logo=axios&logoColor=white)](https://axios-http.com/)
+[![Bootstrap 5](https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
+[![Open-Meteo](https://img.shields.io/badge/API-Open--Meteo-orange)](https://open-meteo.com/)
+[![Deployment](https://img.shields.io/badge/Deployment-GitHub_Pages-brightgreen?logo=github)](https://mohammed-aichour.github.io/react-weather-gallery/)
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 🌤️ Présentation du Projet
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+**React Weather & City Gallery** est une application web moderne développée sous **React 19** permettant d'explorer les prévisions météo mondiales et marocaines en temps réel, couplée à une galerie photo dynamique alimentée par API.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+L'application intègre l'API **Open-Meteo** (fonctionnelle instantanément sans clé requise) pour restituer les conditions climatiques précises (températures actuelles, ressenties, humidité, vitesse du vent et prévisions hebdomadaires), ainsi que l'API **Pixabay** pour afficher une galerie visuelle haute résolution de la ville recherchée.
 
-### `npm test`
+* **Démo en ligne** : [https://mohammed-aichour.github.io/react-weather-gallery/](https://mohammed-aichour.github.io/react-weather-gallery/)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## ✨ Fonctionnalités Clés
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Météo Temps Réel & Prévisions 7 Jours** :
+  - Recherche instantanée par ville (Maroc & Monde).
+  - Récupération des données météo via l'API Open-Meteo.
+  - Affichage des indicateurs : Température (°C), Humidité (%), Vitesse du vent (km/h), et conditions actuelles.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- **Galerie d'Images Dynamique (Pixabay API)** :
+  - Chargement dynamique de photographies haute définition de la ville ciblée.
+  - Pagination réactive et gestion des états de chargement (`loading states`) et d'absence de résultats (`empty states`).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **Module Culture & Géographie (REST Countries API)** :
+  - Intégration des données officielles sur le Maroc (capitale, population, devises, fuseau horaire, drapeaux).
 
-### `npm run eject`
+- **Architecture Réactive sous React 19** :
+  - Utilisation de hooks avancés (`useCallback`, `useMemo`, `useRef`, `useEffect`).
+  - Découpage en composants modulaires (`HomePage`, `WeatherPage`, `GalleryPage`, `CulturePage`, `SearchBar`).
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+---
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🏗️ Structure du Projet
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```
+react-weather-gallery/
+├── public/
+├── src/
+│   ├── api/             # Connecteurs API (Open-Meteo, Pixabay, REST Countries)
+│   ├── components/      # Composants modulaires (Home, Weather, Gallery, Culture, Navbar)
+│   ├── App.js           # Composant racine et gestion d'état centralisée
+│   ├── config.js        # Configuration sécurisée des variables d'environnement
+│   └── index.js
+├── .env.example         # Modèle des variables d'environnement
+└── package.json
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 🚀 Installation & Lancement Local
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+1. **Cloner le projet** :
+   ```bash
+   git clone https://github.com/Mohammed-aichour/react-weather-gallery.git
+   cd react-weather-gallery
+   ```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+2. **Installer les dépendances** :
+   ```bash
+   npm install
+   ```
 
-### Code Splitting
+3. **Lancer le serveur de développement** :
+   ```bash
+   npm start
+   # L'application s'ouvre automatiquement sur http://localhost:3000
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+4. **Variables d'environnement optionnelles** :
+   * Copiez `.env.example` en `.env.local` pour ajouter votre clé Pixabay optionnelle :
+     ```env
+     REACT_APP_PIXABAY_KEY=votre_cle_pixabay_optionnelle
+     ```
+   * *Note : La météo Open-Meteo fonctionne immédiatement sans aucune clé API.*
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## 👤 Auteur
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-# react-weather-gallery
+**Mohammed AICHOUR** — Élève Ingénieur en Génie Informatique, École Polytechnique d’Agadir – Universiapolis (Option Cybersécurité & Réseaux).
