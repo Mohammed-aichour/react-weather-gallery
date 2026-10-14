@@ -8,6 +8,10 @@
 [![Open-Meteo](https://img.shields.io/badge/API-Open--Meteo-orange)](https://open-meteo.com/)
 [![Deployment](https://img.shields.io/badge/Deployment-GitHub_Pages-brightgreen?logo=github)](https://mohammed-aichour.github.io/react-weather-gallery/)
 
+<p align="center">
+  <img src="screenshots/weather_gallery_preview.png" alt="Aperçu React Weather Gallery" width="100%">
+</p>
+
 ---
 
 ## 🌤️ Présentation du Projet
