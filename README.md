@@ -44,6 +44,26 @@ L'application intègre l'API **Open-Meteo** (fonctionnelle instantanément sans 
 
 ---
 
+## 🏛️ Architecture des Composants & Flux API
+
+```mermaid
+flowchart TD
+    App["Composant Racine (App.js)<br>Gestion d'État Centralisée (Hooks)"]
+    
+    App --> Home["HomePage (Vue d'ensemble & métriques)"]
+    App --> Weather["WeatherPage (Prévisions temps réel & 7 jours)"]
+    App --> Gallery["GalleryPage (Explorateur visuel par ville)"]
+    App --> Culture["CulturePage (Fiches nationales)"]
+
+    Weather --> OpenMeteo["API Open-Meteo<br>(Sans clé requise, HTTP JSON)"]
+    Gallery --> Pixabay["API Pixabay & Fallback Local<br>(Photos HD)"]
+    Culture --> RestCountries["API REST Countries<br>(Démographie & Géographie)"]
+
+    Search["SearchBar"] -. "Sélection de Ville Normalisée" .-> App
+```
+
+---
+
 ## 🏗️ Structure du Projet
 
 ```
